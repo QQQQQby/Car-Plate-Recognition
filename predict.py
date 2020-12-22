@@ -14,13 +14,13 @@ from classifier import Classifier
 
 
 class PlateDetector:
-    def __init__(self, chinese_cnn_path, others_cnn_path, image_path=None, gui=None, do_show_process=False):
+    def __init__(self, chinese_cnn_path, others_cnn_path, image_path=None, gui=None, show_process=False):
         if not os.path.exists(chinese_cnn_path) or not os.path.exists(others_cnn_path):
             raise ValueError("CNN path does not exist.")
         self.chinese_classifier = Classifier(chinese_cnn_path, is_chinese=True)
         self.others_classifier = Classifier(others_cnn_path, is_chinese=False)
 
-        self.do_show_process = do_show_process
+        self.show_process = show_process
         self.gui = gui
 
         self.img = None if not image_path else cv2.imread(image_path)
@@ -32,8 +32,6 @@ class PlateDetector:
     def find_plate_location(self):
         if self.img is None:
             return None
-
-        self.do_show_process = False
 
         # Preprocess
         img_blur = cv2.GaussianBlur(self.img, (5, 5), 0)
@@ -96,7 +94,6 @@ class PlateDetector:
     def split_characters(self):
         if self.img_plate is None:
             return None
-        self.do_show_process = True
 
         # Preprocess
         h, w = self.img_plate.shape[:2]
@@ -135,7 +132,7 @@ class PlateDetector:
                 del wave_list[i + 1]
         print("Waves:", wave_list)
 
-        if self.do_show_process:
+        if self.show_process:
             plt.figure(figsize=(10, 10))
             plt.plot(white_array)
             plt.plot(white_mean_array)
@@ -199,7 +196,7 @@ class PlateDetector:
             cv2.imshow(window_name, img)
             cv2.waitKey(60 * 1000)
 
-        if self.do_show_process:
+        if self.show_process:
             threading.Thread(target=show, args=(window_name, img)).start()
 
 
@@ -211,12 +208,8 @@ def parse_args():
                         help='Path to CNN that classifies letters and digits.')
     parser.add_argument('--image_path', type=str, default='',
                         help='Image path.')
-    # parser.add_argument('--do_show_process', type=int, default=0,
-    #                     help='Batch size of train set.')
-
-    # parser.add_argument('--area_threshold', type=int, default=2000,
-    #                     help='Minimum area of detection.')
-    # batch_size
+    parser.add_argument('--show_process', action='store_true', default=False,
+                        help="Show process when predicting.")
     args = parser.parse_args()
     return args
 
@@ -224,7 +217,7 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
     detector = PlateDetector(chinese_cnn_path=args.chinese_cnn_path, others_cnn_path=args.others_cnn_path,
-                             image_path=args.image_path, do_show_process=True)
+                             image_path=args.image_path, show_process=args.show_process)
     detector.find_plate_location()
     detector.split_characters()
     detector.classify()

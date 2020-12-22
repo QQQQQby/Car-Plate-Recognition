@@ -42,15 +42,12 @@ class Classifier:
 
     def predict(self, images, batch_size=8, to_character=True):
         """
-        :param to_character:
-        :param images: [num_images, 20, 20]
-        :param batch_size:
-        :return:
+        Predict labels.
         """
         images = np.array(images, )
         pred_labels = []
         self.cnn.eval()
-        for start in tqdm(range(0, len(images), batch_size)):
+        for start in range(0, len(images), batch_size):
             outputs = self.cnn(torch.tensor(images[start:start + batch_size], dtype=torch.float32))
             pred_labels += outputs.softmax(1).argmax(1).tolist()
         return [self.characters[idx] for idx in pred_labels] if to_character else pred_labels
@@ -58,15 +55,7 @@ class Classifier:
     def train(self, num_epochs, train_batch_size=8, method='adam', lr=0.01, momentum=0, do_eval=True,
               eval_batch_size=8):
         """
-
-        :param num_epochs:
-        :param train_batch_size:
-        :param method:
-        :param lr:
-        :param momentum:
-        :param do_eval:
-        :param eval_batch_size:
-        :return:
+        Train, and evaluate if specified.
         """
         assert train_batch_size > 0 and eval_batch_size > 0
         optimizer = self.get_optimizer(method=method, lr=lr, momentum=momentum)
