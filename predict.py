@@ -7,16 +7,18 @@ import os
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
 
-from utils import find_waves
+from util import find_waves
 from classifier import Classifier
 
 
 class PlateDetector:
-    def __init__(self, cnn_path, image_path=None, gui=None, do_show_process=False):
-        if not os.path.exists(cnn_path):
+    def __init__(self, chinese_cnn_path, others_cnn_path, image_path=None, gui=None, do_show_process=False):
+        if not os.path.exists(chinese_cnn_path) or not os.path.exists(others_cnn_path):
             raise ValueError("CNN path does not exist.")
-        self.classifier = Classifier(cnn_path)
+        self.chinese_classifier = Classifier(chinese_cnn_path, is_chinese=True)
+        self.others_classifier = Classifier(others_cnn_path, is_chinese=False)
 
         self.do_show_process = do_show_process
         self.gui = gui
@@ -24,7 +26,8 @@ class PlateDetector:
         self.img = None if not image_path else cv2.imread(image_path)
         self.img_after_detected = None
         self.img_plate = None
-        self.character_img_list = None
+        self.character_image_list = None
+        self.result_list = None
 
     def find_plate_location(self):
         if self.img is None:
@@ -83,8 +86,8 @@ class PlateDetector:
         self.img_plate = cv2.warpAffine(self.img, rotate_matrix, (self.img.shape[1], self.img.shape[0]))
 
         w, h = plate_rect[1]
-        x1, x2 = int(plate_rect[0][0] - w / 2) - 5, int(plate_rect[0][0] + w / 2) + 5
-        y1, y2 = int(plate_rect[0][1] - h / 2) - 5, int(plate_rect[0][1] + h / 2) + 5
+        x1, x2 = int(plate_rect[0][0] - w / 2), int(plate_rect[0][0] + w / 2)
+        y1, y2 = int(plate_rect[0][1] - h / 2), int(plate_rect[0][1] + h / 2)
         self.img_plate = self.img_plate[y1:y2, x1:x2]
         if w < h:
             self.img_plate = np.rot90(self.img_plate)
@@ -146,22 +149,50 @@ class PlateDetector:
             plt.show()
 
         # Generate character images
-        self.character_img_list = []
+        self.character_image_list = []
         for idx, wave in enumerate(wave_list):
-            self.character_img_list.append(self.img_plate[:, wave[0]:wave[1], :])
-            self.show_image('character_' + str(idx), self.character_img_list[idx])
+            self.character_image_list.append(self.img_plate[:, wave[0]:wave[1], :])
+            self.show_image('character_' + str(idx), self.character_image_list[idx])
+
+    def classify(self):
+        if self.character_image_list is None:
+            return None
+
+        # Preprocess
+        processed_image_list = []
+        for idx, img in enumerate(self.character_image_list):
+            img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            h, w = img_gray.shape
+            if h > w:
+                padding_left = (h - w) // 2
+                padding_right = h - w - padding_left
+                img_gray = np.pad(img_gray, ((0, 0), (padding_left, padding_right)), 'constant')
+            else:
+                padding_top = (w - h) // 2
+                padding_bottom = w - h - padding_top
+                img_gray = np.pad(img_gray, ((padding_top, padding_bottom), (0, 0)), 'constant')
+            img_gray = cv2.resize(img_gray, dsize=(20, 20))
+            _, img_bin = cv2.threshold(img_gray, 110, 255, cv2.THRESH_BINARY)
+            # self.show_image('gray_'+str(idx),img_gray)
+            self.show_image('bin_' + str(idx), img_bin)
+            processed_image_list.append(img_gray)
+
+        self.result_list = [self.chinese_classifier.predict(processed_image_list[0:1])[0]]
+        self.result_list += self.others_classifier.predict(processed_image_list[1:])
 
     def load_img(self, path):
         self.img = cv2.imread(path)
         self.img_after_detected = None
         self.img_plate = None
-        self.character_img_list = None
+        self.character_image_list = None
+        self.result_list = None
 
     def clear_img(self):
         self.img = None
         self.img_after_detected = None
         self.img_plate = None
-        self.character_img_list = None
+        self.character_image_list = None
+        self.result_list = None
 
     def show_image(self, window_name, img):
         def show(window_name, img):
@@ -174,10 +205,12 @@ class PlateDetector:
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Arguments for Car Plate Recognition.")
-    parser.add_argument('--cnn_path', type=str, default='',
-                        help='Path of CNN.')
+    parser.add_argument('--chinese_cnn_path', type=str, default='./models/chinese/79.pth',
+                        help='Path to CNN that classifies Chinese characters.')
+    parser.add_argument('--others_cnn_path', type=str, default='./models/others/49.pth',
+                        help='Path to CNN that classifies letters and digits.')
     parser.add_argument('--image_path', type=str, default='',
-                        help='Model path.')
+                        help='Image path.')
     # parser.add_argument('--do_show_process', type=int, default=0,
     #                     help='Batch size of train set.')
 
@@ -190,6 +223,9 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    detector = PlateDetector(cnn_path=args.cnn_path, image_path=args.image_path, do_show_process=True)
+    detector = PlateDetector(chinese_cnn_path=args.chinese_cnn_path, others_cnn_path=args.others_cnn_path,
+                             image_path=args.image_path, do_show_process=True)
     detector.find_plate_location()
     detector.split_characters()
+    detector.classify()
+    print(detector.result_list)

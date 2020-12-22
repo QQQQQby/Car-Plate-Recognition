@@ -13,25 +13,61 @@ import modules
 
 
 class Classifier:
-    characters = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-                  'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K',
-                  'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',
-                  'W', 'X', 'Y', 'Z',
-                  '云', '京', '冀', '吉', '宁', '川', '新', '晋', '桂', '沪',
-                  '津', '浙', '渝', '湘', '琼', '甘', '皖', '粤', '苏', '蒙',
-                  '藏', '豫', '贵', '赣', '辽', '鄂', '闽', '陕', '青', '鲁',
-                  '黑']
-    character_dict = dict([(c, i) for i, c in enumerate(characters)])
+    chinese_characters = ['云', '京', '冀', '吉', '宁', '川', '新', '晋', '桂', '沪',
+                          '津', '浙', '渝', '湘', '琼', '甘', '皖', '粤', '苏', '蒙',
+                          '藏', '豫', '贵', '赣', '辽', '鄂', '闽', '陕', '青', '鲁',
+                          '黑']
+    other_characters = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+                        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K',
+                        'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',
+                        'W', 'X', 'Y', 'Z']
 
-    def __init__(self, load_path=None, dataset_path=None, train_proportion=0.8, save_path=None):
-        self.cnn = modules.CNN1() if not load_path else torch.load(load_path)
+    def __init__(self, load_path=None, dataset_path=None, train_proportion=0.8, save_path=None, is_chinese=True):
+        if torch.cuda.is_available():
+            torch.set_default_tensor_type('torch.cuda.FloatTensor')
+
+        if load_path:
+            self.cnn = torch.load(load_path)
+        elif is_chinese:
+            self.cnn = modules.MyCNN(len(self.chinese_characters))
+        else:
+            self.cnn = modules.MyCNN(len(self.other_characters))
+        self.characters = self.chinese_characters if is_chinese else self.other_characters
+        self.character_dict = dict([(c, i) for i, c in enumerate(self.characters)])
+
         self.train_images, self.train_labels = ([], []) if not dataset_path else self.read_dataset(dataset_path)
         self.eval_images, self.eval_labels = ([], [])
         self.train_proportion = train_proportion
         self.save_path = save_path
 
+    def predict(self, images, batch_size=8, to_character=True):
+        """
+        :param to_character:
+        :param images: [num_images, 20, 20]
+        :param batch_size:
+        :return:
+        """
+        images = np.array(images, )
+        pred_labels = []
+        self.cnn.eval()
+        for start in tqdm(range(0, len(images), batch_size)):
+            outputs = self.cnn(torch.tensor(images[start:start + batch_size], dtype=torch.float32))
+            pred_labels += outputs.softmax(1).argmax(1).tolist()
+        return [self.characters[idx] for idx in pred_labels] if to_character else pred_labels
+
     def train(self, num_epochs, train_batch_size=8, method='adam', lr=0.01, momentum=0, do_eval=True,
               eval_batch_size=8):
+        """
+
+        :param num_epochs:
+        :param train_batch_size:
+        :param method:
+        :param lr:
+        :param momentum:
+        :param do_eval:
+        :param eval_batch_size:
+        :return:
+        """
         assert train_batch_size > 0 and eval_batch_size > 0
         optimizer = self.get_optimizer(method=method, lr=lr, momentum=momentum)
         for epoch in range(num_epochs):
@@ -103,16 +139,15 @@ class Classifier:
             os.makedirs(self.save_path)
         torch.save(self.cnn, os.path.join(self.save_path, name))
 
-    @classmethod
-    def read_dataset(cls, path):
+    def read_dataset(self, path):
         print('-' * 20 + 'Reading data' + '-' * 20, flush=True)
         images, labels = [], []
-        for character in tqdm(cls.characters):
+        for character in tqdm(self.characters):
             current_dir = os.path.join(path, character)
             for file_name in os.listdir(current_dir):
                 file_path = os.path.join(current_dir, file_name)
                 image = cv2.imdecode(np.fromfile(file_path, dtype=np.uint8), cv2.IMREAD_GRAYSCALE)
-                label = cls.character_dict[character]
+                label = self.character_dict[character]
                 images.append(image)
                 labels.append(label)
         return images, labels

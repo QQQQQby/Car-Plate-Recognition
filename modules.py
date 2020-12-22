@@ -2,72 +2,43 @@
 
 import torch
 from torch import nn
+import torch.nn.functional as F
 
 
-class CNN1(nn.Module):
-    def __init__(self):
-        super(CNN1, self).__init__()
+class MyCNN(nn.Module):
+    def __init__(self, num_classes):
+        super(MyCNN, self).__init__()
         """1 * 20 * 20"""
-        self.conv1 = nn.Sequential(
-            nn.Conv2d(1, 32, 5, padding=2, bias=True),
-            nn.ReLU(),
-            nn.MaxPool2d(2, 2)
-        )
-        """32 * 10 * 10"""
-        self.conv2 = nn.Sequential(
-            nn.Conv2d(32, 64, 5, padding=2, bias=True),
-            nn.ReLU(),
-            nn.MaxPool2d(2, 2)
-        )
-        """64 * 5 * 5"""
-        self.fc = nn.Sequential(
-            nn.Linear(64 * 5 * 5, 1024, bias=True),
-            nn.ReLU(),
-            nn.Dropout(0.8),
-            nn.Linear(1024, 65, bias=True)
-        )
-        """65"""
+        self.conv1 = nn.Conv2d(1, 64, 5, padding=2, bias=False)
+        self.batch_norm1 = nn.BatchNorm2d(64)
+        self.pool1 = nn.MaxPool2d((2, 2))
+        """64 * 10 * 10"""
+        self.conv2 = nn.Conv2d(64, 128, 5, padding=2, bias=False)
+        self.batch_norm2 = nn.BatchNorm2d(128)
+        self.pool2 = nn.MaxPool2d((2, 2))
+        """128 * 5 * 5"""
+        self.fc1 = nn.Linear(128 * 5 * 5, 1024, bias=False)
+        self.dropout1 = nn.Dropout(0.8)
+        self.fc2 = nn.Linear(1024, num_classes, bias=True)
+        """num_classes"""
 
     def forward(self, x):
         x = x.unsqueeze(1)
+
         x = self.conv1(x)
+        x = self.batch_norm1(x)
+        x = torch.relu(x)
+        x = self.pool1(x)
+
         x = self.conv2(x)
+        x = self.batch_norm2(x)
+        x = torch.relu(x)
+        x = self.pool2(x)
+
         x = x.flatten(1)
-        x = self.fc(x)
+        x = self.fc1(x)
+        x = torch.relu(x)
+        x = self.dropout1(x)
+        x = self.fc2(x)
         return x
 
-
-class CNN2(nn.Module):
-    def __init__(self):
-        super(CNN2, self).__init__()
-        """1 * 20 * 20"""
-        self.conv1 = nn.Sequential(
-            nn.Conv2d(1, 32, 5, padding=2, bias=True),
-            nn.ReLU(),
-            nn.MaxPool2d(2, 2)
-        )
-        """32 * 10 * 10"""
-        self.conv2 = nn.Sequential(
-            nn.Conv2d(32, 64, 5, padding=2, bias=True),
-            nn.ReLU(),
-            nn.MaxPool2d(2, 2)
-        )
-        """64 * 5 * 5"""
-        self.fc = nn.Sequential(
-            nn.Linear(64 * 5 * 5, 1024, bias=True),
-            nn.ReLU(),
-            nn.Dropout(0.8),
-            nn.Linear(1024, 100, bias=True),
-            nn.ReLU(),
-            nn.Dropout(0.8),
-            nn.Linear(100, 65, bias=True)
-        )
-        """65"""
-
-    def forward(self, x):
-        x = x.unsqueeze(1)
-        x = self.conv1(x)
-        x = self.conv2(x)
-        x = x.flatten(1)
-        x = self.fc(x)
-        return x
