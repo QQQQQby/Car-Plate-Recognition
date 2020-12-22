@@ -8,6 +8,7 @@ import numpy as np
 import torch
 from torch import nn, optim
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 import modules
 
@@ -59,6 +60,8 @@ class Classifier:
         """
         assert train_batch_size > 0 and eval_batch_size > 0
         optimizer = self.get_optimizer(method=method, lr=lr, momentum=momentum)
+        train_accuracy_list = []
+        eval_accuracy_list = []
         for epoch in range(num_epochs):
             self.shuffle_dataset()
             # Train
@@ -81,7 +84,9 @@ class Classifier:
                 # Calculate metrics
                 pred_labels = outputs.softmax(1).argmax(1).tolist()
                 num_correct += np.equal(pred_labels, actual_labels).sum()
-            print(num_correct / len(self.train_images))
+            acc = num_correct / len(self.train_images)
+            print('Accuracy:', acc)
+            train_accuracy_list.append(acc)
             self.save_cnn(str(epoch) + '.pth')
 
             # Evaluate
@@ -99,7 +104,13 @@ class Classifier:
                 # Get results
                 pred_labels = outputs.softmax(1).argmax(1).tolist()
                 num_correct += np.equal(pred_labels, actual_labels).sum()
-            print(num_correct / len(self.eval_images))
+            acc = num_correct / len(self.eval_images)
+            print('Accuracy:', acc)
+            eval_accuracy_list.append(acc)
+        plt.plot(train_accuracy_list)
+        plt.plot(eval_accuracy_list)
+        plt.legend(['train', 'eval'])
+        plt.show()
 
     def get_optimizer(self, method='adam', lr=0.01, momentum=0):
         if method == 'sgd':
