@@ -1,22 +1,27 @@
 # coding: utf-8
+
 import argparse
 import threading
+import os
 
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 
 from utils import find_waves
+from classifier import Classifier
 
 
 class PlateDetector:
-    def __init__(self, args, gui=None, do_show_process=False):
-        # self.model = torch.load(args.model_path)
+    def __init__(self, cnn_path, image_path=None, gui=None, do_show_process=False):
+        if not os.path.exists(cnn_path):
+            raise ValueError("CNN path does not exist.")
+        self.classifier = Classifier(cnn_path)
 
         self.do_show_process = do_show_process
         self.gui = gui
 
-        self.img = None if args.image_path == '' else cv2.imread(args.image_path)
+        self.img = None if not image_path else cv2.imread(image_path)
         self.img_after_detected = None
         self.img_plate = None
         self.character_img_list = None
@@ -169,8 +174,8 @@ class PlateDetector:
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Arguments for Car Plate Recognition.")
-    parser.add_argument('--model_path', type=str, default='',
-                        help='Model path.')
+    parser.add_argument('--cnn_path', type=str, default='',
+                        help='Path of CNN.')
     parser.add_argument('--image_path', type=str, default='',
                         help='Model path.')
     # parser.add_argument('--do_show_process', type=int, default=0,
@@ -184,6 +189,7 @@ def parse_args():
 
 
 if __name__ == '__main__':
-    detector = PlateDetector(parse_args(), do_show_process=True)
+    args = parse_args()
+    detector = PlateDetector(cnn_path=args.cnn_path, image_path=args.image_path, do_show_process=True)
     detector.find_plate_location()
     detector.split_characters()
