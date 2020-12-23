@@ -11,14 +11,13 @@ from util import find_waves
 
 
 class PlateDetector:
-    def __init__(self, chinese_cnn_path, others_cnn_path, image_path=None, gui=None, show_process=False):
+    def __init__(self, chinese_cnn_path, others_cnn_path, image_path=None, show_process=False):
         if not os.path.exists(chinese_cnn_path) or not os.path.exists(others_cnn_path):
             raise ValueError("CNN path does not exist.")
         self.chinese_classifier = Classifier(chinese_cnn_path, is_chinese=True)
         self.others_classifier = Classifier(others_cnn_path, is_chinese=False)
 
         self.show_process = show_process
-        self.gui = gui
 
         self.img = None if not image_path else cv2.imread(image_path)
         self.img_after_detected = None
@@ -148,7 +147,7 @@ class PlateDetector:
             self.character_image_list.append(self.img_plate[:, wave[0]:wave[1], :])
             self.show_image('character_' + str(idx), self.character_image_list[idx])
 
-    def classify(self):
+    def classify_characters(self):
         if self.character_image_list is None:
             return None
 
@@ -173,6 +172,7 @@ class PlateDetector:
 
         self.result_list = [self.chinese_classifier.predict(processed_image_list[0:1])[0]]
         self.result_list += self.others_classifier.predict(processed_image_list[1:])
+        print('Plate numbers:', ''.join(self.result_list))
 
     def load_img(self, path):
         self.img = cv2.imread(path)

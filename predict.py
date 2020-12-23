@@ -1,6 +1,7 @@
 # coding: utf-8
 
 import argparse
+
 from detector import PlateDetector
 
 
@@ -24,5 +25,5 @@ if __name__ == '__main__':
                              image_path=args.image_path, show_process=args.show_process)
     detector.find_plate_location()
     detector.split_characters()
-    detector.classify()
+    detector.classify_characters()
     print(detector.result_list)
