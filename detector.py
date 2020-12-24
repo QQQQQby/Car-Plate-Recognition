@@ -73,7 +73,7 @@ class PlateDetector:
         if plate_rect is None:
             return None
         print("Plate rect:", plate_rect)
-        self.show_image("imgGaryContour", self.img_after_detected)
+        self.show_image("img_detected", self.img_after_detected)
 
         # Rotate the rectangle
         rotate_matrix = cv2.getRotationMatrix2D(plate_rect[0], plate_rect[2], 1.0)
@@ -166,9 +166,8 @@ class PlateDetector:
                 img_gray = np.pad(img_gray, ((padding_top, padding_bottom), (0, 0)), 'constant')
             img_gray = cv2.resize(img_gray, dsize=(20, 20))
             _, img_bin = cv2.threshold(img_gray, 110, 255, cv2.THRESH_BINARY)
-            # self.show_image('gray_'+str(idx),img_gray)
             self.show_image('bin_' + str(idx), img_bin)
-            processed_image_list.append(img_gray)
+            processed_image_list.append(img_bin)
 
         self.result_list = [self.chinese_classifier.predict(processed_image_list[0:1])[0]]
         self.result_list += self.others_classifier.predict(processed_image_list[1:])

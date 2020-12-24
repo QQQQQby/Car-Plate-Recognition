@@ -27,7 +27,7 @@ class LPRGUI:
         self.add_gap(root, 20)
 
         # Show image
-        self.image_canvas = tk.Canvas(root, width=self.max_image_width, height=self.max_image_height, bg='white')
+        self.image_canvas = tk.Canvas(root, width=self.max_image_width, height=self.max_image_height, bg='#E0E0E0')
         self.image_canvas.pack()
         self.tk_image = None
 

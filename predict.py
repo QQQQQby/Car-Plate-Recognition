@@ -26,4 +26,3 @@ if __name__ == '__main__':
     detector.find_plate_location()
     detector.split_characters()
     detector.classify_characters()
-    print(detector.result_list)
